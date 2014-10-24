@@ -4,6 +4,7 @@ import static de.tudarmstadt.ukp.shibhttpclient.Utils.*;
 import static java.util.Arrays.asList;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 
 import javax.security.sasl.AuthenticationException;
@@ -37,7 +38,8 @@ import org.opensaml.ws.soap.soap11.impl.EnvelopeBuilder;
 import org.opensaml.ws.soap.soap11.impl.HeaderBuilder;
 import org.opensaml.xml.XMLObject;
 import org.opensaml.xml.parse.ParserPool;
-import org.opensaml.xml.util.Base64;
+
+import de.tudarmstadt.ukp.shibhttpclient.authentication.Authenticator;
 
 /**
  * Analyse responses to detect PAOS solicitations for an authentication. Answer these and then transparently proceed with the original
@@ -55,16 +57,14 @@ public class EcpResponsePostProcessor implements HttpResponseInterceptor
     private final HttpClient         client;
     private final ParserPool         parserPool;
     private final String             idpUrl;
-    private final String             username;
-    private final String             password;
+    private final Authenticator      authenticator;
     
-    public EcpResponsePostProcessor( HttpClient client, ParserPool parserPool, String idpUrl, String username, String password )
+    public EcpResponsePostProcessor( HttpClient client, ParserPool parserPool, String idpUrl, Authenticator authenticator )
     {
         this.client = client;
         this.parserPool = parserPool;
         this.idpUrl = idpUrl;
-        this.username = username;
-        this.password = password;
+        this.authenticator = authenticator;
     }
     
     @Override
@@ -111,7 +111,8 @@ public class EcpResponsePostProcessor implements HttpResponseInterceptor
         }
         
         // -- Parse PAOS response -------------------------------------------------------------
-        Envelope initialLoginSoapResponse = getSoapMessage( paosResponse.getEntity() );
+        HttpEntity paosEntity = paosResponse.getEntity();
+        Envelope initialLoginSoapResponse = getSoapMessage( paosEntity );
         
         // -- Capture relay state (optional) --------------------------------------------------
         RelayState relayState = captureRelayState( initialLoginSoapResponse );
@@ -135,7 +136,7 @@ public class EcpResponsePostProcessor implements HttpResponseInterceptor
         // Try logging in to the IdP using HTTP BASIC authentication
         HttpPost idpLoginRequest = new HttpPost( idpUrl );
         idpLoginRequest.getParams().setBooleanParameter( AUTH_IN_PROGRESS, true );
-        idpLoginRequest.addHeader( HttpHeaders.AUTHORIZATION, "Basic " + Base64.encodeBytes( (username + ":" + password).getBytes() ) );
+        authenticator.supplyCredentials( idpLoginRequest );
         idpLoginRequest.setEntity( new StringEntity( xmlToString( idpLoginSoapRequest ) ) );
         HttpResponse idpLoginResponse = client.execute( idpLoginRequest );
         
@@ -250,7 +251,8 @@ public class EcpResponsePostProcessor implements HttpResponseInterceptor
     private org.opensaml.ws.soap.soap11.Envelope getSoapMessage( HttpEntity entity ) throws ClientProtocolException, IllegalStateException,
             IOException
     {
-        Envelope soapEnvelope = (Envelope) unmarshallMessage( parserPool, entity.getContent() );
+        InputStream content = entity.getContent();
+        Envelope soapEnvelope = (Envelope) unmarshallMessage( parserPool, content );
         EntityUtils.consumeQuietly( entity );
         return soapEnvelope;
     }

@@ -21,6 +21,8 @@ import static java.util.Arrays.asList;
 import java.io.IOException;
 import java.net.ProxySelector;
 import java.security.GeneralSecurityException;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.List;
 
 import org.apache.commons.logging.Log;
@@ -41,7 +43,7 @@ import org.apache.http.conn.socket.ConnectionSocketFactory;
 import org.apache.http.conn.socket.PlainConnectionSocketFactory;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
 import org.apache.http.conn.ssl.SSLContextBuilder;
-import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
+import org.apache.http.conn.ssl.TrustStrategy;
 import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
@@ -52,6 +54,8 @@ import org.apache.http.params.HttpParams;
 import org.apache.http.protocol.HttpContext;
 import org.opensaml.xml.parse.BasicParserPool;
 
+import de.tudarmstadt.ukp.shibhttpclient.authentication.Authenticator;
+import de.tudarmstadt.ukp.shibhttpclient.authentication.BasicAuthenticator;
 import de.tudarmstadt.ukp.shibhttpclient.processor.EcpRequestPreProcessor;
 import de.tudarmstadt.ukp.shibhttpclient.processor.EcpResponsePostProcessor;
 
@@ -168,6 +172,9 @@ public class ShibHttpClient implements HttpClient
         setUsername( aUsername );
         setPassword( aPassword );
         
+        parserPool = new BasicParserPool();
+        parserPool.setNamespaceAware( true );
+        
         // Use a pooling connection manager, because we'll have to do a call out to the IdP
         // while still being in a connection with the SP
         PoolingHttpClientConnectionManager connMgr;
@@ -176,7 +183,15 @@ public class ShibHttpClient implements HttpClient
             try
             {
                 SSLContextBuilder builder = new SSLContextBuilder();
-                builder.loadTrustMaterial( null, new TrustSelfSignedStrategy() );
+                TrustStrategy trustStrategy = new TrustStrategy()
+                {
+                    @Override
+                    public boolean isTrusted( X509Certificate[] chain, String authType ) throws CertificateException
+                    {
+                        return true;
+                    }
+                };
+                builder.loadTrustMaterial( null, trustStrategy );
                 Registry<ConnectionSocketFactory> socketFactoryRegistry = RegistryBuilder
                         .<ConnectionSocketFactory> create()
                         .register( "http", new PlainConnectionSocketFactory() )
@@ -206,32 +221,35 @@ public class ShibHttpClient implements HttpClient
         // Let's throw all common client elements into one builder object
         HttpClientBuilder customClient = HttpClients.custom().setConnectionManager( connMgr )
         // The client needs to remember the auth cookie
-                .setDefaultRequestConfig( globalRequestConfig ).setDefaultCookieStore( cookieStore )
-                // Add the ECP/PAOS headers - needs to be added first so the cookie we get from
-                // the authentication can be handled by the RequestAddCookies interceptor later
-                .addInterceptorFirst( new EcpRequestPreProcessor( client, cookieStore ) );
-        
-        // Automatically log into IdP if transparent Shibboleth authentication handling is requested (default)
-        if ( transparentAuth )
-        {
-            customClient = customClient.addInterceptorFirst( new EcpResponsePostProcessor( client, parserPool, aIdpUrl, aUsername,
-                    aPassword ) );
-        }
+                .setDefaultRequestConfig( globalRequestConfig ).setDefaultCookieStore( cookieStore );
         
         // Build the client with/without proxy settings
         if ( aProxy == null )
         {
             // use the proxy settings of the JVM, if specified
-            client = customClient.setRoutePlanner( new SystemDefaultRoutePlanner( ProxySelector.getDefault() ) ).build();
+            customClient = customClient.setRoutePlanner( new SystemDefaultRoutePlanner( ProxySelector.getDefault() ) );
         }
         else
         {
             // use the explicit proxy
-            client = customClient.setProxy( aProxy ).build();
+            customClient = customClient.setProxy( aProxy );
         }
         
-        parserPool = new BasicParserPool();
-        parserPool.setNamespaceAware( true );
+        HttpClient ecpClient = customClient.build();
+        
+        // Add the ECP/PAOS headers - needs to be added first so the cookie we get from
+        // the authentication can be handled by the RequestAddCookies interceptor later
+        customClient = customClient.addInterceptorFirst( new EcpRequestPreProcessor( ecpClient, cookieStore ) );
+        
+        // Automatically log into IdP if transparent Shibboleth authentication handling is requested (default)
+        if ( transparentAuth )
+        {
+            Authenticator basicAuthenticator = new BasicAuthenticator( aUsername, aPassword.toCharArray() );
+            customClient = customClient.addInterceptorFirst( new EcpResponsePostProcessor( ecpClient, parserPool, aIdpUrl,
+                    basicAuthenticator ) );
+        }
+        
+        client = customClient.build();
     }
     
     public void setIdpUrl( String aIdpUrl )
