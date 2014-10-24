@@ -39,26 +39,24 @@ import org.opensaml.xml.XMLObject;
 import org.opensaml.xml.parse.ParserPool;
 import org.opensaml.xml.util.Base64;
 
-import de.tudarmstadt.ukp.shibhttpclient.ShibHttpClient;
-
 /**
  * Analyse responses to detect PAOS solicitations for an authentication. Answer these and then transparently proceed with the original
  * request.
  */
+@SuppressWarnings( "deprecation" )
 public class EcpResponsePostProcessor implements HttpResponseInterceptor
 {
-    private final Log                 log              = LogFactory.getLog( getClass() );
+    private final Log                log              = LogFactory.getLog( getClass() );
     
-    private static final String       MIME_TYPE_PAOS   = "application/vnd.paos+xml";
-    private static final String       HEADER_PAOS      = "PAOS";
-    private static final List<String> REDIRECTABLE     = asList( "HEAD", "GET", "CONNECT" );
-    private static final String       AUTH_IN_PROGRESS = ShibHttpClient.class.getName() + ".AUTH_IN_PROGRESS";
+    public static final String       AUTH_IN_PROGRESS = EcpResponsePostProcessor.class.getName() + ".AUTH_IN_PROGRESS";
+    public static final String       MIME_TYPE_PAOS   = "application/vnd.paos+xml";
+    public static final List<String> REDIRECTABLE     = asList( "HEAD", "GET", "CONNECT" );
     
-    private final HttpClient          client;
-    private final ParserPool          parserPool;
-    private final String              idpUrl;
-    private final String              username;
-    private final String              password;
+    private final HttpClient         client;
+    private final ParserPool         parserPool;
+    private final String             idpUrl;
+    private final String             username;
+    private final String             password;
     
     public EcpResponsePostProcessor( HttpClient client, ParserPool parserPool, String idpUrl, String username, String password )
     {
