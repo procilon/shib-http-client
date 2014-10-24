@@ -16,17 +16,12 @@
 
 package de.tudarmstadt.ukp.shibhttpclient;
 
-import static java.util.Arrays.asList;
-
 import java.io.IOException;
 import java.net.ProxySelector;
 import java.security.GeneralSecurityException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
-import java.util.List;
 
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
@@ -72,27 +67,11 @@ import de.tudarmstadt.ukp.shibhttpclient.processor.EcpResponsePostProcessor;
 @SuppressWarnings( "deprecation" )
 public class ShibHttpClient implements HttpClient
 {
-    private final Log                 log              = LogFactory.getLog( getClass() );
+    private CloseableHttpClient client;
     
-    private static final String       AUTH_IN_PROGRESS = ShibHttpClient.class.getName() + ".AUTH_IN_PROGRESS";
+    private BasicCookieStore    cookieStore;
     
-    private static final String       MIME_TYPE_PAOS   = "application/vnd.paos+xml";
-    
-    private static final String       HEADER_PAOS      = "PAOS";
-    
-    private CloseableHttpClient       client;
-    
-    private BasicCookieStore          cookieStore;
-    
-    private String                    idpUrl;
-    
-    private String                    username;
-    
-    private String                    password;
-    
-    private BasicParserPool           parserPool;
-    
-    private static final List<String> REDIRECTABLE     = asList( "HEAD", "GET", "CONNECT" );
+    private BasicParserPool     parserPool;
     
     /**
      * Create a new client (assuming we don't accept self-signed certificates)
@@ -167,11 +146,6 @@ public class ShibHttpClient implements HttpClient
      */
     public ShibHttpClient( String aIdpUrl, String aUsername, String aPassword, HttpHost aProxy, boolean anyCert, boolean transparentAuth )
     {
-        
-        setIdpUrl( aIdpUrl );
-        setUsername( aUsername );
-        setPassword( aPassword );
-        
         parserPool = new BasicParserPool();
         parserPool.setNamespaceAware( true );
         
@@ -239,7 +213,7 @@ public class ShibHttpClient implements HttpClient
         
         // Add the ECP/PAOS headers - needs to be added first so the cookie we get from
         // the authentication can be handled by the RequestAddCookies interceptor later
-        customClient = customClient.addInterceptorFirst( new EcpRequestPreProcessor( ecpClient, cookieStore ) );
+        customClient = customClient.addInterceptorFirst( new EcpRequestPreProcessor( ecpClient ) );
         
         // Automatically log into IdP if transparent Shibboleth authentication handling is requested (default)
         if ( transparentAuth )
@@ -250,26 +224,6 @@ public class ShibHttpClient implements HttpClient
         }
         
         client = customClient.build();
-    }
-    
-    public void setIdpUrl( String aIdpUrl )
-    {
-        idpUrl = aIdpUrl;
-    }
-    
-    public void setUsername( String aUsername )
-    {
-        username = aUsername;
-    }
-    
-    public void setPassword( String aPassword )
-    {
-        password = aPassword;
-    }
-    
-    protected static String getAuthInProgress()
-    {
-        return AUTH_IN_PROGRESS;
     }
     
     @Override

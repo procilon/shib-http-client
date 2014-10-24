@@ -10,11 +10,9 @@ import org.apache.http.HttpException;
 import org.apache.http.HttpHeaders;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpRequestInterceptor;
-import org.apache.http.client.CookieStore;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpHead;
 import org.apache.http.client.methods.HttpRequestWrapper;
-import org.apache.http.cookie.Cookie;
 import org.apache.http.protocol.HttpContext;
 import org.opensaml.common.xml.SAMLConstants;
 
@@ -28,17 +26,10 @@ public class EcpRequestPreProcessor implements HttpRequestInterceptor
     private static final String HEADER_PAOS = "PAOS";
     
     private final HttpClient    client;
-    private final CookieStore   cookieStore;
     
     public EcpRequestPreProcessor( HttpClient client )
     {
-        this( client, null );
-    }
-    
-    public EcpRequestPreProcessor( HttpClient client, CookieStore cookieStore )
-    {
         this.client = client;
-        this.cookieStore = cookieStore;
     }
     
     @Override
@@ -65,13 +56,6 @@ public class EcpRequestPreProcessor implements HttpRequestInterceptor
             HttpHead knockRequest = new HttpHead( r.getRequestLine().getUri() );
             client.execute( knockRequest );
             
-            if ( cookieStore != null )
-            {
-                for ( Cookie c : cookieStore.getCookies() )
-                {
-                    log.trace( c.toString() );
-                }
-            }
             log.trace( "Knocked" );
         }
     }
