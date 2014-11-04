@@ -24,7 +24,7 @@ import de.tudarmstadt.ukp.shibhttpclient.authentication.sv.SVToken;
  */
 public class SenderVouchesAuthenticator implements Authenticator
 {
-    private static final long FIVE_MINUTES = 300000L;
+    private static final long ONE_MINUTE = 60000L;
     private String            userId;
     private SVSigner          signer;
     
@@ -46,7 +46,7 @@ public class SenderVouchesAuthenticator implements Authenticator
     public void supplyCredentials( HttpRequest request ) throws CredentialException
     {
         Date now = new Date();
-        Date in5Minutes = new Date( now.getTime() + FIVE_MINUTES );
+        Date in5Minutes = new Date( now.getTime() + ONE_MINUTE );
         SVToken svToken = createdSignedToken( now, in5Minutes );
         DERObject token = svToken.getDERObject();
         
