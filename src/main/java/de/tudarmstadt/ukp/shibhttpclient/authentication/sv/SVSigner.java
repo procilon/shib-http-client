@@ -1,12 +1,23 @@
 package de.tudarmstadt.ukp.shibhttpclient.authentication.sv;
 
+import java.math.BigInteger;
 import java.security.SecureRandom;
 import java.security.SignatureException;
 import java.security.cert.X509Certificate;
 import java.security.interfaces.RSAPrivateCrtKey;
 import java.security.interfaces.RSAPrivateKey;
+import java.security.interfaces.RSAPublicKey;
+import java.util.Collection;
 import java.util.Date;
+import java.util.List;
 
+import javax.naming.InvalidNameException;
+import javax.naming.ldap.LdapName;
+import javax.naming.ldap.Rdn;
+import javax.security.auth.x500.X500Principal;
+
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections.Predicate;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.DEREncodable;
 import org.bouncycastle.asn1.DERInteger;
@@ -111,10 +122,11 @@ public class SVSigner
         byte[] encoded = data.getDERObject().getDEREncoded();
         
         SHA256Digest digest = new SHA256Digest();
-        digest.update( encoded, 0, encoded.length );
-        
         PSSSigner signer = new PSSSigner( new RSABlindedEngine(), digest, digest.getDigestSize() );
         signer.init( true, parameters() );
+        
+        digest.update( encoded, 0, encoded.length );
+        
         try
         {
             byte[] signature = signer.generateSignature();
@@ -126,6 +138,63 @@ public class SVSigner
         catch ( Exception e )
         {
             throw new SignatureException( e );
+        }
+    }
+    
+    public static boolean verify( SVToken token, Collection<X509Certificate> trustedCertificates ) throws IssuerNotTrustedException
+    {
+        X509Certificate signerCertificate = findCertificate( trustedCertificates, token.getSigner() );
+        if ( signerCertificate == null )
+        {
+            throw new IssuerNotTrustedException();
+        }
+        RSAPublicKey publicKey = (RSAPublicKey) signerCertificate.getPublicKey();
+        
+        byte[] signedData = token.getData().getDERObject().getDEREncoded();
+        
+        SHA256Digest digest = new SHA256Digest();
+        PSSSigner verifier = new PSSSigner( new RSABlindedEngine(), digest, digest.getDigestSize() );
+        verifier.init( false, new RSAKeyParameters( false, publicKey.getModulus(), publicKey.getPublicExponent() ) );
+        digest.update( signedData, 0, signedData.length );
+        
+        return verifier.verifySignature( token.getSignature() );
+    }
+    
+    private static X509Certificate findCertificate( Collection<X509Certificate> trustedCertificates, IssuerSerial signer )
+    {
+        final BigInteger serialNumber = signer.getSerial().getValue();
+        final X500Principal issuer = new X500Principal( signer.getIssuer().getNames()[0].getName().toString() );
+        X509Certificate signerCertificate = (X509Certificate) CollectionUtils.find( trustedCertificates, new Predicate()
+        {
+            @Override
+            public boolean evaluate( Object object )
+            {
+                X509Certificate cert = (X509Certificate) object;
+                
+                boolean serialMatches = cert.getSerialNumber().equals( serialNumber );
+                boolean issuerEquals = dnMatches( issuer, cert.getIssuerX500Principal() );
+                
+                return serialMatches && issuerEquals;
+            }
+        } );
+        return signerCertificate;
+    }
+    
+    private static boolean dnMatches( X500Principal p1, X500Principal p2 )
+    {
+        try
+        {
+            List<Rdn> rdn1 = new LdapName( p1.getName() ).getRdns();
+            List<Rdn> rdn2 = new LdapName( p2.getName() ).getRdns();
+            
+            if ( rdn1.size() != rdn2.size() )
+                return false;
+            
+            return rdn1.containsAll( rdn2 );
+        }
+        catch ( InvalidNameException e )
+        {
+            throw new RuntimeException( e );
         }
     }
     
