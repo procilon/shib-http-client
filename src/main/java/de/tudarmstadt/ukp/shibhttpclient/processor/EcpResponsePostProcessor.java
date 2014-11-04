@@ -40,6 +40,7 @@ import org.opensaml.xml.XMLObject;
 import org.opensaml.xml.parse.ParserPool;
 
 import de.tudarmstadt.ukp.shibhttpclient.authentication.Authenticator;
+import de.tudarmstadt.ukp.shibhttpclient.authentication.CredentialException;
 
 /**
  * Analyse responses to detect PAOS solicitations for an authentication. Answer these and then transparently proceed with the original
@@ -136,7 +137,14 @@ public class EcpResponsePostProcessor implements HttpResponseInterceptor
         // Try logging in to the IdP using HTTP BASIC authentication
         HttpPost idpLoginRequest = new HttpPost( idpUrl );
         idpLoginRequest.getParams().setBooleanParameter( AUTH_IN_PROGRESS, true );
-        authenticator.supplyCredentials( idpLoginRequest );
+        try
+        {
+            authenticator.supplyCredentials( idpLoginRequest );
+        }
+        catch ( CredentialException e )
+        {
+            throw new IllegalStateException( "credentials for authentication could not be created: " + e.getMessage(), e );
+        }
         idpLoginRequest.setEntity( new StringEntity( xmlToString( idpLoginSoapRequest ) ) );
         HttpResponse idpLoginResponse = client.execute( idpLoginRequest );
         

@@ -17,5 +17,5 @@ public interface Authenticator
      * 
      * @param request
      */
-    void supplyCredentials( HttpRequest request );
+    void supplyCredentials( HttpRequest request ) throws CredentialException;
 }
