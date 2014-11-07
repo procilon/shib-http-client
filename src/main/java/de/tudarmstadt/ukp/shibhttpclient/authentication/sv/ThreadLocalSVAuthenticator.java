@@ -16,7 +16,7 @@ public class ThreadLocalSVAuthenticator extends SenderVouchesAuthenticator
      * @param signer
      *            the signer to create signed SV-tokens
      */
-    public ThreadLocalSVAuthenticator( SVSigner signer )
+    public ThreadLocalSVAuthenticator( TokenSigner signer )
     {
         super( null, signer );
     }

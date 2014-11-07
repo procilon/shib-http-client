@@ -36,7 +36,7 @@ public class CallbackSVAuthenticator extends SenderVouchesAuthenticator
      * @param signer
      *            the signer to create signed SV-tokens
      */
-    public CallbackSVAuthenticator( UserIdCallback userIdCallback, SVSigner signer )
+    public CallbackSVAuthenticator( UserIdCallback userIdCallback, TokenSigner signer )
     {
         super( null, signer );
         this.userIdCallback = userIdCallback;

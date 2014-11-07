@@ -48,7 +48,7 @@ import org.bouncycastle.crypto.signers.PSSSigner;
  * @author max.fichtelmann@procilon.de
  *
  */
-public class SVSigner
+public class TokenSigner
 {
     private static final AlgorithmIdentifier SIGNATURE_ALGORITHM;
     static
@@ -72,24 +72,24 @@ public class SVSigner
     private IssuerSerial                     issuerSerial;
     
     /**
-     * Create a new {@link SVSigner} with the specified keys.
+     * Create a new {@link TokenSigner} with the specified keys.
      * 
      * @param privateKey
      * @param certificate
      */
-    public SVSigner( RSAPrivateKey privateKey, X509Certificate certificate )
+    public TokenSigner( RSAPrivateKey privateKey, X509Certificate certificate )
     {
         this( privateKey, certificate, null );
     }
     
     /**
-     * Create a new {@link SVSigner} with the specified keys and an optional random number generator.
+     * Create a new {@link TokenSigner} with the specified keys and an optional random number generator.
      * 
      * @param privateKey
      * @param certificate
      * @param rng
      */
-    public SVSigner( RSAPrivateKey privateKey, X509Certificate certificate, SecureRandom rng )
+    public TokenSigner( RSAPrivateKey privateKey, X509Certificate certificate, SecureRandom rng )
     {
         this.privateKey = privateKey;
         this.certificate = certificate;
@@ -105,7 +105,7 @@ public class SVSigner
      * @return
      * @throws SignatureException
      */
-    public SVToken createSignedToken( String userId, Date validFrom, Date validUntil ) throws SignatureException
+    public SignedToken createSignedToken( String userId, Date validFrom, Date validUntil ) throws SignatureException
     {
         return sign( new TokenData( userId, validFrom, validUntil ) );
     }
@@ -117,7 +117,7 @@ public class SVSigner
      * @return
      * @throws SignatureException
      */
-    public SVToken sign( TokenData data ) throws SignatureException
+    public SignedToken sign( TokenData data ) throws SignatureException
     {
         byte[] encoded = data.getDERObject().getDEREncoded();
         
@@ -133,7 +133,7 @@ public class SVSigner
             
             IssuerSerial issuerSerial = issuerSerial();
             
-            return new SVToken( data, issuerSerial, SIGNATURE_ALGORITHM, signature );
+            return new SignedToken( data, issuerSerial, SIGNATURE_ALGORITHM, signature );
         }
         catch ( Exception e )
         {
@@ -141,7 +141,7 @@ public class SVSigner
         }
     }
     
-    public static boolean verify( SVToken token, Collection<X509Certificate> trustedCertificates ) throws IssuerNotTrustedException
+    public static boolean verify( SignedToken token, Collection<X509Certificate> trustedCertificates ) throws IssuerNotTrustedException
     {
         X509Certificate signerCertificate = findCertificate( trustedCertificates, token.getSigner() );
         if ( signerCertificate == null )

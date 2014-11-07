@@ -13,7 +13,7 @@ import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
 import org.bouncycastle.asn1.x509.IssuerSerial;
 
-public class SVToken implements DEREncodable
+public class SignedToken implements DEREncodable
 {
     private final TokenData           data;
     private final IssuerSerial        signer;
@@ -27,7 +27,7 @@ public class SVToken implements DEREncodable
      * @param signatureAlgorithm
      * @param signature
      */
-    public SVToken( TokenData data, IssuerSerial signer, AlgorithmIdentifier signatureAlgorithm, byte[] signature )
+    public SignedToken( TokenData data, IssuerSerial signer, AlgorithmIdentifier signatureAlgorithm, byte[] signature )
     {
         this.data = data;
         this.signer = signer;
@@ -47,7 +47,7 @@ public class SVToken implements DEREncodable
         return new DERSequence( vector );
     }
     
-    public static SVToken parse( ASN1Sequence sequence ) throws ParseException
+    public static SignedToken parse( ASN1Sequence sequence ) throws ParseException
     {
         if ( sequence.size() != 4 )
         {
@@ -64,7 +64,7 @@ public class SVToken implements DEREncodable
         AlgorithmIdentifier algorithm = AlgorithmIdentifier.getInstance( encodedAlgorithm );
         byte[] signature = DEROctetString.getInstance( encodedSignature ).getOctets();
         
-        return new SVToken( data, signer, algorithm, signature );
+        return new SignedToken( data, signer, algorithm, signature );
     }
     
     /**
