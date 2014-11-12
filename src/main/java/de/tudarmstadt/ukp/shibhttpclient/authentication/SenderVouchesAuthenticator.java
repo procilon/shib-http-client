@@ -46,8 +46,8 @@ public class SenderVouchesAuthenticator implements Authenticator
     public void supplyCredentials( HttpRequest request ) throws CredentialException
     {
         Date now = new Date();
-        Date in5Minutes = new Date( now.getTime() + ONE_MINUTE );
-        SignedToken svToken = createdSignedToken( now, in5Minutes );
+        Date in1Minute = new Date( now.getTime() + ONE_MINUTE );
+        SignedToken svToken = createdSignedToken( now, in1Minute );
         DERObject token = svToken.getDERObject();
         
         String senderVouchesHeader = "Sender-Voucher " + DatatypeConverter.printBase64Binary( token.getDEREncoded() );
