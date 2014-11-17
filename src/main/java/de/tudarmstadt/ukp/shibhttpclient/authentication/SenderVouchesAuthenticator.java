@@ -9,8 +9,8 @@ import org.apache.http.HttpRequest;
 import org.apache.http.client.HttpClient;
 import org.bouncycastle.asn1.DERObject;
 
-import de.tudarmstadt.ukp.shibhttpclient.authentication.sv.TokenSigner;
 import de.tudarmstadt.ukp.shibhttpclient.authentication.sv.SignedToken;
+import de.tudarmstadt.ukp.shibhttpclient.authentication.sv.TokenSigner;
 
 /**
  * A {@link Authenticator} for Sender-vouches tokens.
@@ -26,7 +26,7 @@ public class SenderVouchesAuthenticator implements Authenticator
 {
     private static final long ONE_MINUTE = 60000L;
     private String            userId;
-    private TokenSigner          signer;
+    private TokenSigner       signer;
     
     /**
      * Creates a new {@link SenderVouchesAuthenticator} for a static user id.
@@ -69,7 +69,7 @@ public class SenderVouchesAuthenticator implements Authenticator
     {
         try
         {
-            return signer.createSignedToken( userId, validFrom, validUntil );
+            return signer.createSignedToken( currentUser(), validFrom, validUntil );
         }
         catch ( SignatureException e )
         {
