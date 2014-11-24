@@ -6,6 +6,7 @@ import java.io.IOException;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.http.Header;
 import org.apache.http.HttpException;
 import org.apache.http.HttpHeaders;
 import org.apache.http.HttpRequest;
@@ -35,7 +36,16 @@ public class EcpRequestPreProcessor implements HttpRequestInterceptor
     @Override
     public void process( HttpRequest request, HttpContext context ) throws HttpException, IOException
     {
-        request.addHeader( HttpHeaders.ACCEPT, MIME_TYPE_PAOS );
+        if ( request.containsHeader( HttpHeaders.ACCEPT ) )
+        {
+            Header currentAccept = request.getFirstHeader( HttpHeaders.ACCEPT );
+            String acceptWithPaos = currentAccept.getValue() + ", " + MIME_TYPE_PAOS;
+            request.setHeader( HttpHeaders.ACCEPT, acceptWithPaos );
+        }
+        else
+        {
+            request.addHeader( HttpHeaders.ACCEPT, MIME_TYPE_PAOS );
+        }
         request.addHeader( HEADER_PAOS, "ver=\"" + SAMLConstants.PAOS_NS + "\";\"" + SAMLConstants.SAML20ECP_NS + "\"" );
         
         HttpRequest r = request;
