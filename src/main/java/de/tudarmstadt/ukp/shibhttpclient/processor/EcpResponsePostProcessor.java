@@ -48,11 +48,13 @@ import de.tudarmstadt.ukp.shibhttpclient.authentication.CredentialException;
 @SuppressWarnings( "deprecation" )
 public class EcpResponsePostProcessor implements HttpResponseInterceptor
 {
-    private final Log                log              = LogFactory.getLog( getClass() );
     
-    public static final String       AUTH_IN_PROGRESS = EcpResponsePostProcessor.class.getName() + ".AUTH_IN_PROGRESS";
-    public static final String       MIME_TYPE_PAOS   = "application/vnd.paos+xml";
-    public static final List<String> REDIRECTABLE     = asList( "HEAD", "GET", "CONNECT" );
+    private final Log                log                = LogFactory.getLog( getClass() );
+    
+    private static final String      SOAP_ACTION_HEADER = "SOAPAction";
+    public static final String       AUTH_IN_PROGRESS   = EcpResponsePostProcessor.class.getName() + ".AUTH_IN_PROGRESS";
+    public static final String       MIME_TYPE_PAOS     = "application/vnd.paos+xml";
+    public static final List<String> REDIRECTABLE       = asList( "HEAD", "GET", "CONNECT" );
     
     private final HttpClient         client;
     private final ParserPool         parserPool;
@@ -235,6 +237,16 @@ public class EcpResponsePostProcessor implements HttpResponseInterceptor
      * @return true if the HttpResponse is a SAML SOAP message, false if not
      */
     private boolean isSamlSoapResponse( HttpResponse res )
+    {
+        return hasPAOSContentType( res ) || hasSOAPActionHeader( res );
+    }
+    
+    private boolean hasSOAPActionHeader( HttpResponse res )
+    {
+        return res.containsHeader( SOAP_ACTION_HEADER );
+    }
+    
+    private boolean hasPAOSContentType( HttpResponse res )
     {
         boolean isSamlSoap = false;
         if ( res.getFirstHeader( HttpHeaders.CONTENT_TYPE ) != null )
